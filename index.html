@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Representador de parábolas</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --text: #172033;
+      --muted: #607089;
+      --accent: #2563eb;
+      --accent-dark: #1d4ed8;
+      --grid: #d8e0ec;
+      --warning: #b45309;
+      --ok: #047857;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(135deg, #edf4ff 0%, #f8fafc 55%, #eef2ff 100%);
+      color: var(--text);
+    }
+
+    header {
+      padding: 28px 22px 18px;
+      text-align: center;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: clamp(2rem, 4vw, 3.4rem);
+      color: #0f172a;
+    }
+
+    header p {
+      margin: 10px auto 0;
+      max-width: 900px;
+      font-size: 1.05rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .app {
+      width: min(1280px, 96vw);
+      margin: 0 auto 32px;
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid #dbe4f0;
+      border-radius: 22px;
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+      padding: 20px;
+    }
+
+    .controls h2, .graph-card h2 {
+      margin: 0 0 14px;
+      font-size: 1.3rem;
+      color: #0f172a;
+    }
+
+    .formula-box {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    label {
+      font-weight: 700;
+      color: #26364d;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 12px 13px;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      font-size: 1rem;
+      outline: none;
+      background: #fbfdff;
+    }
+
+    input[type="text"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+
+    .hint {
+      font-size: 0.9rem;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .button-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: none;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-weight: 700;
+      cursor: pointer;
+      background: var(--accent);
+      color: white;
+      transition: transform 0.15s ease, background 0.15s ease;
+    }
+
+    button:hover {
+      background: var(--accent-dark);
+      transform: translateY(-1px);
+    }
+
+    button.secondary {
+      background: #e2e8f0;
+      color: #1e293b;
+    }
+
+    button.secondary:hover { background: #cbd5e1; }
+
+    .slider-group {
+      margin: 18px 0;
+      padding: 14px;
+      border-radius: 16px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+    }
+
+    .slider-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .coef-name {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #0f172a;
+    }
+
+    .coef-value {
+      font-family: Consolas, monospace;
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: var(--accent-dark);
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .range-info {
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 0.82rem;
+      margin-top: 3px;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .info-item {
+      padding: 12px;
+      border-radius: 14px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      line-height: 1.35;
+    }
+
+    .info-item strong { color: #1e3a8a; }
+
+    .status {
+      margin-top: 12px;
+      padding: 11px 12px;
+      border-radius: 12px;
+      background: #ecfdf5;
+      color: var(--ok);
+      border: 1px solid #a7f3d0;
+      font-size: 0.95rem;
+      line-height: 1.35;
+    }
+
+    .status.error {
+      background: #fff7ed;
+      color: var(--warning);
+      border-color: #fed7aa;
+    }
+
+    .graph-card { min-height: 650px; }
+
+    .graph-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .equation-display {
+      padding: 12px 16px;
+      border-radius: 16px;
+      background: #0f172a;
+      color: white;
+      font-size: clamp(1.1rem, 2vw, 1.55rem);
+      font-weight: 800;
+      box-shadow: inset 0 -1px 0 rgba(255,255,255,0.12);
+    }
+
+    .canvas-wrap {
+      position: relative;
+      height: 560px;
+      padding: 8px;
+      background: white;
+      border-radius: 18px;
+      border: 1px solid #dbe4f0;
+    }
+
+    canvas {
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    .examples {
+      margin-top: 18px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .examples-title {
+      font-weight: 800;
+      color: #26364d;
+    }
+
+    .example-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .example-buttons button {
+      font-size: 0.9rem;
+      padding: 8px 10px;
+    }
+
+    @media (max-width: 920px) {
+      .app { grid-template-columns: 1fr; }
+      .graph-card { min-height: auto; }
+      .canvas-wrap { height: 430px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Representador de parábolas</h1>
+    <p>Escribe una función cuadrática o modifica los coeficientes con los deslizadores para ver cómo cambia la gráfica de <strong>y = ax² + bx + c</strong>.</p>
+  </header>
+
+  <main class="app">
+    <section class="card controls">
+      <h2>Controles</h2>
+
+      <div class="formula-box">
+        <label for="formulaInput">Fórmula</label>
+        <input id="formulaInput" type="text" value="y = 1x^2 + 0x + 0" />
+        <div class="hint">Formato recomendado: <strong>y = ax^2 + bx + c</strong>. Ejemplos válidos: <em>y = 2x^2 - 3x + 1</em>, <em>0.5x^2 + 4x - 2</em>, <em>-x^2 + 6</em>.</div>
+        <div class="button-row">
+          <button id="applyFormulaBtn">Representar fórmula</button>
+          <button class="secondary" id="resetBtn">Reiniciar</button>
+        </div>
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-top">
+          <span class="coef-name">Coeficiente a</span>
+          <span class="coef-value" id="aValue">1.00</span>
+        </div>
+        <input id="aSlider" type="range" min="-5" max="5" step="0.1" value="1" />
+        <div class="range-info"><span>-5</span><span>abre/cierra y cambia orientación</span><span>5</span></div>
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-top">
+          <span class="coef-name">Coeficiente b</span>
+          <span class="coef-value" id="bValue">0.00</span>
+        </div>
+        <input id="bSlider" type="range" min="-10" max="10" step="0.1" value="0" />
+        <div class="range-info"><span>-10</span><span>desplaza el eje de simetría</span><span>10</span></div>
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-top">
+          <span class="coef-name">Coeficiente c</span>
+          <span class="coef-value" id="cValue">0.00</span>
+        </div>
+        <input id="cSlider" type="range" min="-10" max="10" step="0.1" value="0" />
+        <div class="range-info"><span>-10</span><span>corte con el eje Y</span><span>10</span></div>
+      </div>
+
+      <div class="info-grid">
+        <div class="info-item"><strong>Vértice:</strong> <span id="vertexInfo">(0, 0)</span></div>
+        <div class="info-item"><strong>Eje de simetría:</strong> <span id="axisInfo">x = 0</span></div>
+        <div class="info-item"><strong>Corte con Y:</strong> <span id="yInterceptInfo">(0, 0)</span></div>
+        <div class="info-item"><strong>Cortes con X:</strong> <span id="xInterceptInfo">x = 0</span></div>
+      </div>
+
+      <div id="status" class="status">Parábola representada correctamente.</div>
+
+      <div class="examples">
+        <div class="examples-title">Ejemplos rápidos</div>
+        <div class="example-buttons">
+          <button class="secondary" data-a="1" data-b="0" data-c="0">y = x²</button>
+          <button class="secondary" data-a="-1" data-b="0" data-c="4">y = -x² + 4</button>
+          <button class="secondary" data-a="0.5" data-b="-2" data-c="-3">y = 0.5x² - 2x - 3</button>
+          <button class="secondary" data-a="2" data-b="4" data-c="1">y = 2x² + 4x + 1</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card graph-card">
+      <div class="graph-header">
+        <h2>Gráfica</h2>
+        <div id="equationDisplay" class="equation-display">y = x²</div>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="parabolaChart"></canvas>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const aSlider = document.getElementById('aSlider');
+    const bSlider = document.getElementById('bSlider');
+    const cSlider = document.getElementById('cSlider');
+    const aValue = document.getElementById('aValue');
+    const bValue = document.getElementById('bValue');
+    const cValue = document.getElementById('cValue');
+    const formulaInput = document.getElementById('formulaInput');
+    const applyFormulaBtn = document.getElementById('applyFormulaBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const statusBox = document.getElementById('status');
+    const equationDisplay = document.getElementById('equationDisplay');
+    const vertexInfo = document.getElementById('vertexInfo');
+    const axisInfo = document.getElementById('axisInfo');
+    const yInterceptInfo = document.getElementById('yInterceptInfo');
+    const xInterceptInfo = document.getElementById('xInterceptInfo');
+
+    let a = 1;
+    let b = 0;
+    let c = 0;
+    let chart;
+
+    function roundNumber(value, decimals = 2) {
+      if (!Number.isFinite(value)) return '—';
+      const rounded = Number(value.toFixed(decimals));
+      return Object.is(rounded, -0) ? '0' : String(rounded);
+    }
+
+    function formatTerm(coef, variable, isFirst = false) {
+      if (Math.abs(coef) < 1e-10) return '';
+      const sign = coef < 0 ? '−' : '+';
+      const absCoef = Math.abs(coef);
+      const coefText = Math.abs(absCoef - 1) < 1e-10 && variable ? '' : roundNumber(absCoef, 2);
+      const term = `${coefText}${variable}`;
+      return isFirst ? (coef < 0 ? `−${term}` : term) : ` ${sign} ${term}`;
+    }
+
+    function buildEquationText() {
+      const terms = [];
+      const t1 = formatTerm(a, 'x²', true);
+      const t2 = formatTerm(b, 'x', terms.length === 0 && !t1);
+      const t3 = formatTerm(c, '', terms.length === 0 && !t1 && !t2);
+      if (t1) terms.push(t1);
+      if (t2) terms.push(t2);
+      if (t3) terms.push(t3);
+      if (terms.length === 0) return 'y = 0';
+      return `y = ${terms.join('')}`;
+    }
+
+    function updateFormulaInput() {
+      formulaInput.value = buildEquationText().replaceAll('²', '^2').replaceAll('−', '-');
+    }
+
+    function generateData() {
+      const points = [];
+      for (let x = -10; x <= 10.0001; x += 0.1) {
+        points.push({ x: Number(x.toFixed(2)), y: a * x * x + b * x + c });
+      }
+      return points;
+    }
+
+    function generateXAxis() {
+      return [
+        { x: -10, y: 0 },
+        { x: 10, y: 0 }
+      ];
+    }
+
+    function generateYAxis() {
+      return [
+        { x: 0, y: -20 },
+        { x: 0, y: 20 }
+      ];
+    }
+
+    function updateInfo() {
+      if (Math.abs(a) < 1e-10) {
+        vertexInfo.textContent = 'No es parábola: a = 0';
+        axisInfo.textContent = 'No tiene eje parabólico';
+      } else {
+        const xv = -b / (2 * a);
+        const yv = a * xv * xv + b * xv + c;
+        vertexInfo.textContent = `(${roundNumber(xv)}, ${roundNumber(yv)})`;
+        axisInfo.textContent = `x = ${roundNumber(xv)}`;
+      }
+
+      yInterceptInfo.textContent = `(0, ${roundNumber(c)})`;
+
+      const discriminant = b * b - 4 * a * c;
+      if (Math.abs(a) < 1e-10) {
+        if (Math.abs(b) < 1e-10) {
+          xInterceptInfo.textContent = Math.abs(c) < 1e-10 ? 'Infinitos cortes' : 'No corta al eje X';
+        } else {
+          xInterceptInfo.textContent = `x = ${roundNumber(-c / b)}`;
+        }
+      } else if (discriminant < -1e-10) {
+        xInterceptInfo.textContent = 'No tiene cortes reales';
+      } else if (Math.abs(discriminant) < 1e-10) {
+        xInterceptInfo.textContent = `x = ${roundNumber(-b / (2 * a))}`;
+      } else {
+        const x1 = (-b - Math.sqrt(discriminant)) / (2 * a);
+        const x2 = (-b + Math.sqrt(discriminant)) / (2 * a);
+        xInterceptInfo.textContent = `x₁ = ${roundNumber(x1)}, x₂ = ${roundNumber(x2)}`;
+      }
+    }
+
+    function updateStatus(message, isError = false) {
+      statusBox.textContent = message;
+      statusBox.classList.toggle('error', isError);
+    }
+
+    function updateSlidersAndLabels() {
+      aSlider.value = a;
+      bSlider.value = b;
+      cSlider.value = c;
+      aValue.textContent = roundNumber(a);
+      bValue.textContent = roundNumber(b);
+      cValue.textContent = roundNumber(c);
+    }
+
+    function drawChart() {
+      const data = generateData();
+      equationDisplay.textContent = buildEquationText();
+      updateInfo();
+
+      if (!chart) {
+        const ctx = document.getElementById('parabolaChart').getContext('2d');
+        chart = new Chart(ctx, {
+          type: 'scatter',
+          data: {
+            datasets: [
+              {
+                label: buildEquationText(),
+                data,
+                showLine: true,
+                pointRadius: 0,
+                borderWidth: 4,
+                borderColor: '#2563eb',
+                tension: 0.1
+              },
+              {
+                label: 'Eje X',
+                data: generateXAxis(),
+                showLine: true,
+                pointRadius: 0,
+                borderWidth: 2,
+                borderColor: '#64748b'
+              },
+              {
+                label: 'Eje Y',
+                data: generateYAxis(),
+                showLine: true,
+                pointRadius: 0,
+                borderWidth: 2,
+                borderColor: '#64748b'
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            plugins: {
+              legend: {
+                labels: {
+                  font: { size: 15, weight: 'bold' }
+                }
+              },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    return `x = ${roundNumber(context.parsed.x)}, y = ${roundNumber(context.parsed.y)}`;
+                  }
+                }
+              }
+            },
+            scales: {
+              x: {
+                type: 'linear',
+                min: -10,
+                max: 10,
+                title: {
+                  display: true,
+                  text: 'x',
+                  font: { size: 18, weight: 'bold' }
+                },
+                grid: { color: '#d8e0ec' },
+                ticks: { stepSize: 1, font: { size: 13 } }
+              },
+              y: {
+                min: -20,
+                max: 20,
+                title: {
+                  display: true,
+                  text: 'y',
+                  font: { size: 18, weight: 'bold' }
+                },
+                grid: { color: '#d8e0ec' },
+                ticks: { stepSize: 2, font: { size: 13 } }
+              }
+            }
+          }
+        });
+      } else {
+        chart.data.datasets[0].data = data;
+        chart.data.datasets[0].label = buildEquationText();
+        chart.update();
+      }
+    }
+
+    function syncFromSliders() {
+      a = parseFloat(aSlider.value);
+      b = parseFloat(bSlider.value);
+      c = parseFloat(cSlider.value);
+      updateSlidersAndLabels();
+      updateFormulaInput();
+      drawChart();
+      updateStatus('Parábola actualizada con los deslizadores.');
+    }
+
+    function parseFormula(rawFormula) {
+      let formula = rawFormula.toLowerCase().replace(/\s+/g, '');
+      formula = formula.replace('y=', '');
+      formula = formula.replaceAll('−', '-');
+      formula = formula.replaceAll(',', '.');
+      formula = formula.replaceAll('²', '^2');
+
+      if (!formula) throw new Error('La fórmula está vacía.');
+
+      formula = formula.replace(/-/g, '+-');
+      if (formula.startsWith('+')) formula = formula.slice(1);
+      const terms = formula.split('+').filter(Boolean);
+
+      let parsedA = 0;
+      let parsedB = 0;
+      let parsedC = 0;
+
+      for (const term of terms) {
+        if (term.includes('x^2') || term.includes('x**2')) {
+          const coefficient = term.replace('x^2', '').replace('x**2', '');
+          parsedA += parseCoefficient(coefficient);
+        } else if (term.includes('x')) {
+          const coefficient = term.replace('x', '');
+          parsedB += parseCoefficient(coefficient);
+        } else {
+          const number = Number(term);
+          if (!Number.isFinite(number)) throw new Error(`No entiendo el término: ${term}`);
+          parsedC += number;
+        }
+      }
+
+      return { a: clamp(parsedA, -5, 5), b: clamp(parsedB, -10, 10), c: clamp(parsedC, -10, 10) };
+    }
+
+    function parseCoefficient(text) {
+      if (text === '' || text === '+') return 1;
+      if (text === '-') return -1;
+      const number = Number(text);
+      if (!Number.isFinite(number)) throw new Error(`Coeficiente no válido: ${text}`);
+      return number;
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function applyFormula() {
+      try {
+        const parsed = parseFormula(formulaInput.value);
+        a = parsed.a;
+        b = parsed.b;
+        c = parsed.c;
+        updateSlidersAndLabels();
+        updateFormulaInput();
+        drawChart();
+        updateStatus('Fórmula representada correctamente. Si algún coeficiente era muy grande, se ha limitado al rango de los deslizadores.');
+      } catch (error) {
+        updateStatus(`No se pudo interpretar la fórmula. Usa un formato como y = 2x^2 - 3x + 1. Detalle: ${error.message}`, true);
+      }
+    }
+
+    function setCoefficients(newA, newB, newC) {
+      a = newA;
+      b = newB;
+      c = newC;
+      updateSlidersAndLabels();
+      updateFormulaInput();
+      drawChart();
+      updateStatus('Ejemplo cargado correctamente.');
+    }
+
+    aSlider.addEventListener('input', syncFromSliders);
+    bSlider.addEventListener('input', syncFromSliders);
+    cSlider.addEventListener('input', syncFromSliders);
+    applyFormulaBtn.addEventListener('click', applyFormula);
+    formulaInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') applyFormula();
+    });
+
+    resetBtn.addEventListener('click', () => {
+      setCoefficients(1, 0, 0);
+      updateStatus('Aplicación reiniciada.');
+    });
+
+    document.querySelectorAll('.example-buttons button').forEach(button => {
+      button.addEventListener('click', () => {
+        setCoefficients(
+          Number(button.dataset.a),
+          Number(button.dataset.b),
+          Number(button.dataset.c)
+        );
+      });
+    });
+
+    updateSlidersAndLabels();
+    updateFormulaInput();
+    drawChart();
+  </script>
+</body>
+</html>
